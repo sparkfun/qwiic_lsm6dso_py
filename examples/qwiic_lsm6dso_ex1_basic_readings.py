@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #-------------------------------------------------------------------------------
-# qwiic_template_ex1_title.py TODO: replace template and title
+# SparkFun_Qwiic_6DoF_LSM6DSO_Arduino_Library.py
 #
-# TODO: Add description for this example
+# Demonstrates how to get basic measurements from the LSM6DSO 6DoF IMU
 #-------------------------------------------------------------------------------
-# Written by SparkFun Electronics, TODO: month and year
+# Written by SparkFun Electronics, December 2023
 #
 # This python library supports the SparkFun Electroncis Qwiic ecosystem
 #
@@ -33,26 +33,36 @@
 # SOFTWARE.
 #===============================================================================
 
-import qwiic_template # TODO Import correct package
+import qwiic_lsm6dso
 import sys
+import time
 
 def runExample():
-	# TODO Replace template and title
-	print("\nQwiic Template Example 1 - Title\n")
+	print("\nQwiic LSM6DSO Example 1 - Basic Readings\n")
 
 	# Create instance of device
-	myDevice = qwiic_template.QwiicTemplate() # TODO update as needed
+	my_imu = qwiic_lsm6dso.QwiicLSM6DSO()
 
 	# Check if it's connected
-	if myDevice.is_connected() == False:
+	if my_imu.is_connected() == False:
 		print("The device isn't connected to the system. Please check your connection", \
 			file=sys.stderr)
 		return
 
 	# Initialize the device
-	myDevice.begin()
+	my_imu.begin()
+	my_imu.initialize(my_imu.BASIC_SETTINGS)
 
-	# TODO Add basic example code
+	while True:
+		print("Accelerometer: X:%.2f, Y:%.2f, Z:%.2f g" % \
+			(my_imu.read_float_accel_x(), my_imu.read_float_accel_y(), my_imu.read_float_accel_z()))
+		
+		print("Gyroscope:     X:%.2f, Y:%.2f, Z:%.2f dps" % \
+			(my_imu.read_float_gyro_x(), my_imu.read_float_gyro_y(), my_imu.read_float_gyro_z()))
+
+		print("Temperature:   %.2f C" % my_imu.read_temp_c())
+
+		time.sleep(1)
 
 if __name__ == '__main__':
 	try:
