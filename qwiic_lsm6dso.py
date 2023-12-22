@@ -151,54 +151,41 @@ class QwiicLSM6DSO(object):
     # Expected Who Am I value
     WHO_AM_I_VALUE = 0x6C
     
-    FS_XL_2g = 0x00
-    FS_XL_16g = 0x04
-    FS_XL_4g = 0x08
-    FS_XL_8g = 0x0C
-    FS_XL_MASK = 0xF3
-
-    IF_INC_ENABLED = 0x04
-
-    ODR_XL_DISABLE   = 0x00 
-    ODR_XL_1_6Hz     = 0xB0 # Low Power only
-    ODR_XL_12_5Hz    = 0x10 # Low Power only
-    ODR_XL_26Hz      = 0x20 # Low Power only
-    ODR_XL_52Hz      = 0x30 # Low Power only 
-    ODR_XL_104Hz     = 0x40 # Normal Mode
-    ODR_XL_208Hz     = 0x50 # Normal Mode
-    ODR_XL_416Hz     = 0x60 # High performance
-    ODR_XL_833Hz     = 0x70 # High Performance 
-    ODR_XL_1660Hz    = 0x80 # High Performance
-    ODR_XL_3330Hz    = 0x90 # High Performance
-    ODR_XL_6660Hz    = 0xA0 # High Performance
-    ODR_XL_MASK      = 0x0F
-
-    FS_G_125dps   	= 0x02
-    FS_G_250dps 	= 0x00
-    FS_G_500dps 	= 0x04
-    FS_G_1000dps 	= 0x08
-    FS_G_2000dps 	= 0x0C
-    FS_G_MASK       = 0xF0
-
-    ODR_GYRO_DISABLE = 0x00
-    ODR_GYRO_12_5Hz  = 0x10 # Low Power only
-    ODR_GYRO_26Hz    = 0x20 # Low Power only
-    ODR_GYRO_52Hz    = 0x30 # Low Power only
-    ODR_GYRO_104Hz   = 0x40 # Normal Mode
-    ODR_GYRO_208Hz   = 0x50 # Normal Mode
-    ODR_GYRO_416Hz   = 0x60 # High performance
-    ODR_GYRO_833Hz   = 0x70 # High Performance
-    ODR_GYRO_1660Hz  = 0x80 # High Performance
-    ODR_GYRO_3330Hz  = 0x90 # High Performance
-    ODR_GYRO_6660Hz  = 0xA0 # High Performance
-    ODR_GYRO_MASK    = 0x0F
-
-    BDU_CONTINUOS 	 = 0x00
-    BDU_BLOCK_UPDATE = 0x40
-    BDU_MASK         = 0xBF 
-
-    SW_RESET_NORMAL_MODE = 0x00
+    # Software reset value
     SW_RESET_DEVICE = 0x01
+
+    # Accelerometer full scale range values
+    FS_XL_2g = 0x00
+    FS_XL_16g = 0x01
+    FS_XL_4g = 0x02
+    FS_XL_8g = 0x03
+    FS_XL_MASK = 0xF3
+    FS_XL_POS = 2
+
+    # Gyroscope full scale range values
+    FS_G_125dps   	= 0x01
+    FS_G_250dps 	= 0x00
+    FS_G_500dps 	= 0x02
+    FS_G_1000dps 	= 0x04
+    FS_G_2000dps 	= 0x06
+    FS_G_MASK       = 0xF1
+    FS_G_POS        = 1
+
+    # Accelerometer and gyroscope output data rate values
+    ODR_DISABLE   = 0x00 
+    ODR_12_5Hz    = 0x01 # Low Power only
+    ODR_26Hz      = 0x02 # Low Power only
+    ODR_52Hz      = 0x03 # Low Power only 
+    ODR_104Hz     = 0x04 # Normal Mode
+    ODR_208Hz     = 0x05 # Normal Mode
+    ODR_416Hz     = 0x06 # High performance
+    ODR_833Hz     = 0x07 # High Performance 
+    ODR_1660Hz    = 0x08 # High Performance
+    ODR_3330Hz    = 0x09 # High Performance
+    ODR_6660Hz    = 0x0A # High Performance
+    ODR_1_6Hz     = 0x0B # Low Power only, and only accelerometer
+    ODR_MASK      = 0x0F
+    ODR_POS       = 4
 
     def __init__(self, address=None, i2c_driver=None):
         """
@@ -224,27 +211,8 @@ class QwiicLSM6DSO(object):
         else:
             self._i2c = i2c_driver
 
-        # Construct with these default imuSettings
-
-        self.gyroEnabled = True  # Can be 0 or 1
-        self.gyroRange = 500   # Max deg/s.  Can be: 125, 250, 500, 1000, 2000
-        self.gyroSampleRate = 416   # Hz.  Can be: 13, 26, 52, 104, 208, 416, 833, 1666
-        self.gyroBandWidth = 400  # Hz.  Can be: 50, 100, 200, 400
-        self.gyroFifoEnabled = 1  # Set to include gyro in FIFO
-        self.gyroAccelDecimation = 1  # Set to include gyro in FIFO
-
-        self.accelEnabled = True
-        self.accelRange = 8      # Max G force readable.  Can be: 2, 4, 8, 16
-        self.accelSampleRate = 416  # Hz.  Can be: 1.6 (16), 12.5 (125), 26, 52, 104, 208, 416, 833, 1660, 3330, 6660
-        self.accelFifoEnabled = 1  # Set to include accelerometer in the FIFO
-
-        self.fifoEnabled = True
-        self.fifoThreshold = 3000  # Can be 0 to 4096 (16 bit bytes)
-        self.fifoSampleRate = 416 
-        self.fifoModeWord = 0  # Default off
-
-        self.accel_raw_to_g = 0.000061
-        self.gyro_raw_to_dps = .004375
+        # Initialize member variables by resetting them to their default values
+        self.reset_member_variables()
 
     def is_connected(self):
         """
@@ -258,7 +226,8 @@ class QwiicLSM6DSO(object):
             return False
         
         # Check the Who Am I register to see if it's correct
-        return self._i2c.readByte(self.address, self.WHO_AM_I_REG) == self.WHO_AM_I_VALUE
+        reg_val = self._i2c.readByte(self.address, self.WHO_AM_I_REG)
+        return reg_val == self.WHO_AM_I_VALUE
 
     connected = property(is_connected)
 
@@ -275,107 +244,84 @@ class QwiicLSM6DSO(object):
 
         # Reset to clear any previous settings
         self.software_reset()
-
-        # Apply settings if provided, otherwise use the default settings
-        self.set_accel_range(8)
-        self.set_accel_data_rate(416)
-        self.set_gyro_range(500)
-        self.set_gyro_data_rate(416)
+        
+        # Ensure data registers don't change until data has been read
         self.set_block_data_update(True)
+
+        # Both the accelerometer and gyroscope are disabled by default, which is
+        # controlled by the ODR value. Because the ranges both default to their
+        # minimum values, we'll default the ODR to the minimum value as well.
+        self.set_accel_data_rate(self.ODR_12_5Hz)
+        self.set_gyro_data_rate(self.ODR_12_5Hz)
 
         # Done!
         return True
 
+    def reset_member_variables(self):
+        # The accelerometer and gyroscope default to their minimum ranges, which
+        # result in these conversion factors
+        self.accel_raw_to_g = 0.000061
+        self.gyro_raw_to_dps = .004375
+
+    def software_reset(self):
+        self._i2c.writeByte(self.address, self.CTRL3_C, self.SW_RESET_DEVICE)
+
+        # Also reset member variables to reflect change of device settings
+        self.reset_member_variables()
+
+    def set_block_data_update(self, enable):
+        reg_val = self._i2c.readByte(self.address, self.CTRL3_C)
+        reg_val &= 0xBF
+        reg_val |= enable << 6
+        self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
+        
     def set_accel_range(self, range):
-        if range < 0 or range > 16:
+        # Ensure provided range is valid
+        if range < self.FS_XL_2g or range > self.FS_XL_8g:
             return False
 
-        reg_val = 0
-        full_scale = 0
-        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
-
+        # Get full scale value, can't have 16g with XL_FS_MODE == 1
         full_scale = self.get_accel_full_scale()
+        if full_scale == 1 and range == self.ODR_1_6Hz:
+            range = self.ODR_12_5Hz
 
-        # Can't have 16g with XL_FS_MODE == 1
-        if full_scale == 1 and range == 16:
-            range = 8
-
+        # Get current register value, set new range, write new register value
+        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
         reg_val &= self.FS_XL_MASK
-
-        if range == 2:
-            reg_val |= self.FS_XL_2g
-        elif range == 4:
-            reg_val |= self.FS_XL_4g
-        elif range == 8:
-            reg_val |= self.FS_XL_8g
-        elif range == 16:
-            reg_val |= self.FS_XL_16g
-
+        reg_val |= range << self.FS_XL_POS
         self._i2c.writeByte(self.address, self.CTRL1_XL, reg_val)
 
-        scale = (reg_val >> 1) & 0x01
-        accel_range = (reg_val >> 2) & (0x03)
+        # Compute raw to G conversion value
+        if range == self.FS_XL_2g:
+            self.accel_raw_to_g = 0.000061
+        elif range == self.FS_XL_4g:
+            self.accel_raw_to_g = 0.000122
+        elif range == self.FS_XL_8g:
+            self.accel_raw_to_g = 0.000244
+        elif range == self.FS_XL_16g:
+            self.accel_raw_to_g = 0.000488
 
-        if scale == 0:
-            if accel_range == 0:  # Register value 0: 2g
-                self.accel_raw_to_g = 0.000061
-            elif accel_range == 1:  # Register value 1: 16g
-                self.accel_raw_to_g = 0.000488
-            elif accel_range == 2:  # Register value 2: 4g
-                self.accel_raw_to_g = 0.000122
-            elif accel_range == 3:  # Register value 3: 8g
-                self.accel_raw_to_g = 0.000244
-        elif scale == 1:
-            if accel_range == 0:  # Register value 0: 2g
-                self.accel_raw_to_g = 0.000061
-            elif accel_range == 1:  # Register value 1: 2g
-                self.accel_raw_to_g = 0.000061
-            elif accel_range == 2:  # Register value 2: 4g
-                self.accel_raw_to_g = 0.000122
-            elif accel_range == 3:  # Register value 3: 8g
-                self.accel_raw_to_g = 0.000244
+        # Done!
+        return True
 
     def set_accel_data_rate(self, rate):
-        if rate < 16 or rate > 6660:
+        # Ensure provided rate is valid
+        if rate < self.ODR_DISABLE or rate > self.ODR_1_6Hz:
             return False
 
-        reg_val = 0
-        high_perf = 0
-        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
-
+        # Get high performance value, can't have 1.6Hz with HP mode enabled
         high_perf = self.get_accel_high_perf()
+        if high_perf == 1 and range == self.ODR_1_6Hz:
+            range = self.ODR_12_5Hz
 
-        if high_perf == 0 and rate == 16:
-            rate = 125
-
-        reg_val &= self.ODR_XL_MASK
-
-        if rate == 0:
-            reg_val |= self.ODR_XL_DISABLE
-        elif rate == 16:
-            reg_val |= self.ODR_XL_1_6Hz
-        elif rate == 125:
-            reg_val |= self.ODR_XL_12_5Hz
-        elif rate == 26:
-            reg_val |= self.ODR_XL_26Hz
-        elif rate == 52:
-            reg_val |= self.ODR_XL_52Hz
-        elif rate == 104:
-            reg_val |= self.ODR_XL_104Hz
-        elif rate == 208:
-            reg_val |= self.ODR_XL_208Hz
-        elif rate == 416:
-            reg_val |= self.ODR_XL_416Hz
-        elif rate == 833:
-            reg_val |= self.ODR_XL_833Hz
-        elif rate == 1660:
-            reg_val |= self.ODR_XL_1660Hz
-        elif rate == 3330:
-            reg_val |= self.ODR_XL_3330Hz
-        elif rate == 6660:
-            reg_val |= self.ODR_XL_6660Hz
-
+        # Get current register value, set new rate, write new register value
+        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
+        reg_val &= self.ODR_MASK
+        reg_val |= rate << self.ODR_POS
         self._i2c.writeByte(self.address, self.CTRL1_XL, reg_val)
+
+        # Done!
+        return True
 
     def get_accel_full_scale(self):
         reg_val = self._i2c.readByte(self.address, self.CTRL8_XL)
@@ -385,90 +331,45 @@ class QwiicLSM6DSO(object):
         reg_val = self._i2c.readByte(self.address, self.CTRL6_C)
         return (reg_val & 0x10) >> 4
 
-    def set_gyro_data_rate(self, rate):
-        if rate < 0 or rate > 6660:
-            return False
-
-        reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
-
-        reg_val &= self.ODR_GYRO_MASK
-
-        if rate == 0:
-            reg_val |= self.ODR_GYRO_DISABLE
-        elif rate == 125:
-            reg_val |= self.ODR_GYRO_12_5Hz
-        elif rate == 26:
-            reg_val |= self.ODR_GYRO_26Hz
-        elif rate == 52:
-            reg_val |= self.ODR_GYRO_52Hz
-        elif rate == 104:
-            reg_val |= self.ODR_GYRO_104Hz
-        elif rate == 208:
-            reg_val |= self.ODR_GYRO_208Hz
-        elif rate == 416:
-            reg_val |= self.ODR_GYRO_416Hz
-        elif rate == 833:
-            reg_val |= self.ODR_GYRO_833Hz
-        elif rate == 1660:
-            reg_val |= self.ODR_GYRO_1660Hz
-        elif rate == 3330:
-            reg_val |= self.ODR_GYRO_3330Hz
-        elif rate == 6660:
-            reg_val |= self.ODR_GYRO_6660Hz
-
-        self._i2c.writeByte(self.address, self.CTRL2_G, reg_val)
-
     def set_gyro_range(self, range):
-        if range < 250 or range > 2000:
+        # Ensure provided range is valid
+        if range < self.FS_G_250dps or range > self.FS_G_2000dps:
             return False
 
+        # Get current register value, set new range, write new register value
         reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
-
         reg_val &= self.FS_G_MASK
-
-        if range == 125:
-            reg_val |= self.FS_G_125dps
-        elif range == 250:
-            reg_val |= self.FS_G_250dps
-        elif range == 500:
-            reg_val |= self.FS_G_500dps
-        elif range == 1000:
-            reg_val |= self.FS_G_1000dps
-        elif range == 2000:
-            reg_val |= self.FS_G_2000dps
-
+        reg_val |= range << self.FS_G_POS
         self._i2c.writeByte(self.address, self.CTRL2_G, reg_val)
 
-        full_scale = (reg_val >> 1) & 0x01
-        gyro_range = (reg_val >> 2) & 0x03
-
-        if full_scale:
+        # Compute raw to DPS conversion value
+        if range == self.FS_G_125dps:
             self.gyro_raw_to_dps = .004375
-        else:
-            if gyro_range == 0:
-                self.gyro_raw_to_dps = .00875
-            elif gyro_range == 1:
-                self.gyro_raw_to_dps = .01750
-            elif gyro_range == 2:
-                self.gyro_raw_to_dps = .035
-            elif gyro_range == 3:
-                self.gyro_raw_to_dps = .070
+        elif range == self.FS_G_250dps:
+            self.gyro_raw_to_dps = .00875
+        elif range == self.FS_G_500dps:
+            self.gyro_raw_to_dps = .0175
+        elif range == self.FS_G_1000dps:
+            self.gyro_raw_to_dps = .035
+        elif range == self.FS_G_2000dps:
+            self.gyro_raw_to_dps = .070
 
-    def set_block_data_update(self, enable):
-        reg_val = self._i2c.readByte(self.address, self.CTRL3_C)
-        
-        reg_val &= 0xBF
-        reg_val |= self.BDU_BLOCK_UPDATE
-        
-        self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
-        
-    def set_increment(self, enable = True):
-        reg_val = self._i2c.readByte(self.address, self.CTRL3_C)
+        # Done!
+        return True
 
-        reg_val &= 0xFD
-        reg_val |= self.IF_INC_ENABLED
+    def set_gyro_data_rate(self, rate):
+        # Ensure provided rate is valid
+        if rate < self.ODR_DISABLE or rate > self.ODR_6660Hz:
+            return False
 
-        self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
+        # Get current register value, set new rate, write new register value
+        reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
+        reg_val &= self.ODR_MASK
+        reg_val |= rate << self.ODR_POS
+        self._i2c.writeByte(self.address, self.CTRL2_G, reg_val)
+
+        # Done!
+        return True
 
     def read_raw_accel_x(self):
         return self._i2c.readWord(self.address, self.OUTX_L_A)
@@ -566,6 +467,3 @@ class QwiicLSM6DSO(object):
 
     def read_temp_f(self):
         return (self.read_temp_c() * 9) / 5 + 32
-    
-    def software_reset(self):
-        self._i2c.writeByte(self.address, self.CTRL3_C, self.SW_RESET_DEVICE)
