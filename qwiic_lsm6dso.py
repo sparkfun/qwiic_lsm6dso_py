@@ -249,8 +249,8 @@ class QwiicLSM6DSO(object):
         self.fifoSampleRate = 416 
         self.fifoModeWord = 0  # Default off
 
-        self.allOnesCounter = 0
-        self.nonSuccessCounter = 0
+        self.accel_raw_to_g = 0.000061
+        self.gyro_raw_to_dps = .004375
 
     def is_connected(self):
         """
@@ -367,6 +367,28 @@ class QwiicLSM6DSO(object):
 
         self._i2c.writeByte(self.address, self.CTRL1_XL, reg_val)
 
+        scale = (reg_val >> 1) & 0x01
+        accel_range = (reg_val >> 2) & (0x03)
+
+        if scale == 0:
+            if accel_range == 0:  # Register value 0: 2g
+                self.accel_raw_to_g = 0.000061
+            elif accel_range == 1:  # Register value 1: 16g
+                self.accel_raw_to_g = 0.000488
+            elif accel_range == 2:  # Register value 2: 4g
+                self.accel_raw_to_g = 0.000122
+            elif accel_range == 3:  # Register value 3: 8g
+                self.accel_raw_to_g = 0.000244
+        elif scale == 1:
+            if accel_range == 0:  # Register value 0: 2g
+                self.accel_raw_to_g = 0.000061
+            elif accel_range == 1:  # Register value 1: 2g
+                self.accel_raw_to_g = 0.000061
+            elif accel_range == 2:  # Register value 2: 4g
+                self.accel_raw_to_g = 0.000122
+            elif accel_range == 3:  # Register value 3: 8g
+                self.accel_raw_to_g = 0.000244
+
     def set_accel_data_rate(self, rate):
         if rate < 16 or rate > 6660:
             return False
@@ -471,6 +493,21 @@ class QwiicLSM6DSO(object):
 
         self._i2c.writeByte(self.address, self.CTRL2_G, reg_val)
 
+        full_scale = (reg_val >> 1) & 0x01
+        gyro_range = (reg_val >> 2) & 0x03
+
+        if full_scale:
+            self.gyro_raw_to_dps = .004375
+        else:
+            if gyro_range == 0:
+                self.gyro_raw_to_dps = .00875
+            elif gyro_range == 1:
+                self.gyro_raw_to_dps = .01750
+            elif gyro_range == 2:
+                self.gyro_raw_to_dps = .035
+            elif gyro_range == 3:
+                self.gyro_raw_to_dps = .070
+
     def set_block_data_update(self, enable):
         reg_val = self._i2c.readByte(self.address, self.CTRL3_C)
         
@@ -488,118 +525,88 @@ class QwiicLSM6DSO(object):
         self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
 
     def read_raw_accel_x(self):
-        output = self._i2c.readWord(self.address, self.OUTX_L_A)
-        return output
+        return self._i2c.readWord(self.address, self.OUTX_L_A)
 
     def read_float_accel_x(self):
-        output = self.calc_accel(self.read_raw_accel_x())
-        return output
+        return self.calc_accel(self.read_raw_accel_x())
 
     def read_raw_accel_y(self):
-        output = self._i2c.readWord(self.address, self.OUTY_L_A)
-        return output
+        return self._i2c.readWord(self.address, self.OUTY_L_A)
 
     def read_float_accel_y(self):
-        output = self.calc_accel(self.read_raw_accel_y())
-        return output
+        return self.calc_accel(self.read_raw_accel_y())
 
     def read_raw_accel_z(self):
-        output = self._i2c.readWord(self.address, self.OUTZ_L_A)
-        return output
+        return self._i2c.readWord(self.address, self.OUTZ_L_A)
 
     def read_float_accel_z(self):
-        output = self.calc_accel(self.read_raw_accel_z())
-        return output
+        return self.calc_accel(self.read_raw_accel_z())
+
+    def read_raw_accel_all(self):
+        return self._i2c.readBlock(self.address, self.OUTX_L_G, 6)
+
+    def read_float_accel_all(self):
+        raw = self.read_raw_accel_all()
+        outputX = self.calc_accel(raw[0] | (raw[1] << 8))
+        outputY = self.calc_accel(raw[2] | (raw[3] << 8))
+        outputZ = self.calc_accel(raw[4] | (raw[5] << 8))
+        return outputX, outputY, outputZ
 
     def calc_accel(self, input):
-        accel_range = 0
-        scale = 0
-        output = 0.0
-
-        accel_range = self._i2c.readByte(self.address, self.CTRL1_XL)
-        scale = (accel_range >> 1) & 0x01
-        accel_range = (accel_range >> 2) & (0x03)
-
         # Convert input to signed 16-bit
-        if input >= 2**15:
-            input -= 2**16
-
-        if scale == 0:
-            if accel_range == 0:  # Register value 0: 2g
-                output = (float(input) * 0.061) / 1000
-            elif accel_range == 1:  # Register value 1: 16g
-                output = (float(input) * 0.488) / 1000
-            elif accel_range == 2:  # Register value 2: 4g
-                output = (float(input) * 0.122) / 1000
-            elif accel_range == 3:  # Register value 3: 8g
-                output = (float(input) * 0.244) / 1000
-
-        if scale == 1:
-            if accel_range == 0:  # Register value 0: 2g
-                output = (float(input) * 0.061) / 1000
-            elif accel_range == 1:  # Register value 1: 2g
-                output = (float(input) * 0.061) / 1000
-            elif accel_range == 2:  # Register value 2: 4g
-                output = (float(input) * 0.122) / 1000
-            elif accel_range == 3:  # Register value 3: 8g
-                output = (float(input) * 0.244) / 1000
-
-        return output
+        if input >= 32768:
+            input -= 65536
+        return input * self.accel_raw_to_g
 
     def read_raw_gyro_x(self):
-        output = self._i2c.readWord(self.address, self.OUTX_L_G)
-        return output
+        return self._i2c.readWord(self.address, self.OUTX_L_G)
 
     def read_float_gyro_x(self):
-        output = self.calc_gyro(self.read_raw_gyro_x())
-        return output
+        return self.calc_gyro(self.read_raw_gyro_x())
 
     def read_raw_gyro_y(self):
-        output = self._i2c.readWord(self.address, self.OUTY_L_G)
-        return output
+        return self._i2c.readWord(self.address, self.OUTY_L_G)
 
     def read_float_gyro_y(self):
-        output = self.calc_gyro(self.read_raw_gyro_y())
-        return output
+        return self.calc_gyro(self.read_raw_gyro_y())
 
     def read_raw_gyro_z(self):
-        output = self._i2c.readWord(self.address, self.OUTZ_L_G)
-        return output
+        return self._i2c.readWord(self.address, self.OUTZ_L_G)
 
     def read_float_gyro_z(self):
-        output = self.calc_gyro(self.read_raw_gyro_z())
-        return output
+        return self.calc_gyro(self.read_raw_gyro_z())
+
+    def read_raw_gyro_all(self):
+        return self._i2c.readBlock(self.address, self.OUTX_L_A, 6)
+
+    def read_float_gyro_all(self):
+        raw = self.read_raw_gyro_all()
+        outputX = self.calc_gyro(raw[0] | (raw[1] << 8))
+        outputY = self.calc_gyro(raw[2] | (raw[3] << 8))
+        outputZ = self.calc_gyro(raw[4] | (raw[5] << 8))
+        return outputX, outputY, outputZ
 
     def calc_gyro(self, input):
-        gyro_range = 0
-        full_scale = 0
-        output = 0
-
-        gyro_range = self._i2c.readByte(self.address, self.CTRL2_G)
-        full_scale = (gyro_range >> 1) & 0x01
-        gyro_range = (gyro_range >> 2) & 0x03
-
         # Convert input to signed 16-bit
-        if input >= 2**15:
-            input -= 2**16
+        if input >= 32768:
+            input -= 65536
+        return input * self.gyro_raw_to_dps
 
-        if full_scale:
-            output = (float(input) * 4.375) / 1000
-        else:
-            if gyro_range == 0:
-                output = (float(input) * 8.75) / 1000
-            elif gyro_range == 1:
-                output = (float(input) * 17.50) / 1000
-            elif gyro_range == 2:
-                output = (float(input) * 35) / 1000
-            elif gyro_range == 3:
-                output = (float(input) * 70) / 1000
+    def read_raw_accel_gyro_all(self):
+        return self._i2c.readBlock(self.address, self.OUTX_L_G, 12)
 
-        return output
+    def read_float_accel_gyro_all(self):
+        raw = self.read_raw_accel_gyro_all()
+        gyrX = self.calc_gyro(raw[0] | (raw[1] << 8))
+        gyrY = self.calc_gyro(raw[2] | (raw[3] << 8))
+        gyrZ = self.calc_gyro(raw[4] | (raw[5] << 8))
+        accX = self.calc_accel(raw[6] | (raw[7] << 8))
+        accY = self.calc_accel(raw[8] | (raw[9] << 8))
+        accZ = self.calc_accel(raw[10] | (raw[11] << 8))
+        return accX, accY, accZ, gyrX, gyrY, gyrZ
 
     def read_raw_temp(self):
-        output = self._i2c.readWord(self.address, self.OUT_TEMP_L)
-        return output
+        return self._i2c.readWord(self.address, self.OUT_TEMP_L)
 
     def read_temp_c(self):
         temp = self.read_raw_temp()
@@ -612,6 +619,4 @@ class QwiicLSM6DSO(object):
         return temp_float
 
     def read_temp_f(self):
-        output = self.read_temp_c()
-        output = (output * 9) / 5 + 32
-        return output
+        return (self.read_temp_c() * 9) / 5 + 32

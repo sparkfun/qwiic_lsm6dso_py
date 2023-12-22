@@ -53,15 +53,38 @@ def runExample():
 	my_imu.begin()
 	my_imu.initialize(my_imu.BASIC_SETTINGS)
 
+	# Loop forever while printing data
 	while True:
-		print("Accelerometer: X:%.2f, Y:%.2f, Z:%.2f g" % \
-			(my_imu.read_float_accel_x(), my_imu.read_float_accel_y(), my_imu.read_float_accel_z()))
+		# There are a few ways to read sensor data, some are faster than others.
+		# Uncomment the section you want to use below.
+
+		# You can read each axis individually
+		# accX = my_imu.read_float_accel_x()
+		# accY = my_imu.read_float_accel_y()
+		# accZ = my_imu.read_float_accel_z()
+		# gyrX = my_imu.read_float_gyro_x()
+		# gyrY = my_imu.read_float_gyro_y()
+		# gyrZ = my_imu.read_float_gyro_z()
+
+		# Or you can read all 3 axes of each sensor in one call for faster reads
+		# accX, accY, accZ = my_imu.read_float_accel_all()
+		# gyrX, gyrY, gyrZ = my_imu.read_float_gyro_all()
+
+		# Or you can read all 6 axes in a single call for the fastest read speed
+		accX, accY, accZ, gyrX, gyrY, gyrZ = my_imu.read_float_accel_gyro_all()
 		
-		print("Gyroscope:     X:%.2f, Y:%.2f, Z:%.2f dps" % \
-			(my_imu.read_float_gyro_x(), my_imu.read_float_gyro_y(), my_imu.read_float_gyro_z()))
+		# Now print the results!
+		print("Accelerometer: X:%.2f, Y:%.2f, Z:%.2f g" % (accX, accY, accZ))
+		print("Gyroscope:     X:%.2f, Y:%.2f, Z:%.2f dps" % (gyrX, gyrY, gyrZ))
 
-		print("Temperature:   %.2f C" % my_imu.read_temp_c())
+		# You can also read the temperature of the IMU
+		temperature = my_imu.read_temp_c()
+		print("Temperature:   %.2f C" % temperature)
 
+		# Add some space between readings
+		print()
+
+		# Wait a second and repeat
 		time.sleep(1)
 
 if __name__ == '__main__':
