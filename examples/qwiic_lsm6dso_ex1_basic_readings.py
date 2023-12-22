@@ -51,7 +51,6 @@ def runExample():
 
 	# Initialize the device
 	my_imu.begin()
-	my_imu.initialize(my_imu.BASIC_SETTINGS)
 
 	# Loop forever while printing data
 	while True:

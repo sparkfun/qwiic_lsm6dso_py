@@ -151,15 +151,6 @@ class QwiicLSM6DSO(object):
     # Expected Who Am I value
     WHO_AM_I_VALUE = 0x6C
     
-    # Default settings
-    BASIC_SETTINGS = 0x00
-    SOFT_INT_SETTINGS = 0x01
-    HARD_INT_SETTINGS = 0x02
-    FIFO_SETTINGS = 0x03
-    PEDOMETER_SETTINGS = 0x04
-    TAP_SETTINGS = 0x05
-    FREE_FALL_SETTINGS = 0x06
-
     FS_XL_2g = 0x00
     FS_XL_16g = 0x04
     FS_XL_4g = 0x08
@@ -205,6 +196,9 @@ class QwiicLSM6DSO(object):
     BDU_CONTINUOS 	 = 0x00
     BDU_BLOCK_UPDATE = 0x40
     BDU_MASK         = 0xBF 
+
+    SW_RESET_NORMAL_MODE = 0x00
+    SW_RESET_DEVICE = 0x01
 
     def __init__(self, address=None, i2c_driver=None):
         """
@@ -279,65 +273,17 @@ class QwiicLSM6DSO(object):
         if not self.is_connected():
             return False
 
-        # TODO Perform a reset of the device if possible. This reverts all
-        # registers to a known state in case the device was reconfigured before
+        # Reset to clear any previous settings
+        self.software_reset()
 
-        # TODO: Configure device as needed. Once complete, the device should be
-        # fully ready to use to make it very simple for the user
+        # Apply settings if provided, otherwise use the default settings
+        self.set_accel_range(8)
+        self.set_accel_data_rate(416)
+        self.set_gyro_range(500)
+        self.set_gyro_data_rate(416)
+        self.set_block_data_update(True)
 
-        # TODO: Return True once successful. Template defaults to False!
-        return False
-
-    def initialize(self, settings):
-        self.set_increment()
-
-        if settings == self.BASIC_SETTINGS:
-            self.set_accel_range(8)
-            self.set_accel_data_rate(416)
-            self.set_gyro_range(500)
-            self.set_gyro_data_rate(416)
-            self.set_block_data_update(True)
-        elif settings == self.SOFT_INT_SETTINGS:
-            self.set_accel_range(8)
-            self.set_accel_data_rate(416)
-            self.set_gyro_range(500)
-            self.set_gyro_data_rate(416)
-        elif settings == self.HARD_INT_SETTINGS:
-            self.set_interrupt_one(self.INT1_DRDY_XL_ENABLED)
-            self.set_interrupt_two(self.INT2_DRDY_G_ENABLED) 
-            self.set_accel_range(8)
-            self.set_accel_data_rate(416)
-            self.set_gyro_range(500)
-            self.set_gyro_data_rate(416)
-        elif settings == self.FIFO_SETTINGS:
-            self.set_fifo_depth(500)  # bytes
-            # set_ts_decimation()  # FIFO_CTRL4
-            # get_samples_stored()  # FIFO_STATUS1 and STATUS2
-            self.set_accel_batch_data_rate(417)
-            self.set_gyro_batch_data_rate(417)
-            self.set_fifo_mode(self.FIFO_MODE_STOP_WHEN_FULL)  
-            self.set_accel_range(8)
-            self.set_accel_data_rate(833)
-            self.set_gyro_range(500)
-            self.set_gyro_data_rate(833)
-        elif settings == self.PEDOMETER_SETTINGS:
-            self.enable_embedded_functions(True)
-            self.set_accel_data_rate(52)
-            self.enable_pedometer(True)
-        elif settings == self.TAP_SETTINGS:
-            self.set_accel_range(2)
-            self.set_accel_data_rate(417)  # Must be at least 417
-            self.enable_tap(True, True, True, True)
-            self.set_tap_dir_prior(self.TAP_PRIORITY_YXZ)
-            self.set_x_threshold(9)
-            self.configure_tap(0x06)
-            self.route_hard_inter_one(self.INT1_SINGLE_TAP_ENABLED)
-            # set_tap_clear_on_read(True)  # TAP_CFG0
-        elif settings == self.FREE_FALL_SETTINGS:
-            self.enable_embedded_functions(True)
-            # set_free_fall(True)
-            # get_free_fall()
-
+        # Done!
         return True
 
     def set_accel_range(self, range):
@@ -620,3 +566,6 @@ class QwiicLSM6DSO(object):
 
     def read_temp_f(self):
         return (self.read_temp_c() * 9) / 5 + 32
+    
+    def software_reset(self):
+        self._i2c.writeByte(self.address, self.CTRL3_C, self.SW_RESET_DEVICE)
