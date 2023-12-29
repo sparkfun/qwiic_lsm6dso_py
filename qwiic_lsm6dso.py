@@ -285,8 +285,8 @@ class QwiicLSM6DSO(object):
 
         # Get full scale value, can't have 16g with XL_FS_MODE == 1
         full_scale = self.get_accel_full_scale()
-        if full_scale == 1 and range == self.ODR_1_6Hz:
-            range = self.ODR_12_5Hz
+        if full_scale == 1 and range == self.FS_XL_16g:
+            return False
 
         # Get current register value, set new range, write new register value
         reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
@@ -307,6 +307,29 @@ class QwiicLSM6DSO(object):
         # Done!
         return True
 
+    def get_accel_range_raw(self):
+        # Get current register value and extract range
+        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
+        return (reg_val & (0xFF ^ self.FS_XL_MASK)) >> self.FS_XL_POS
+
+    def get_accel_range_g(self):
+        # Get current raw range
+        range = self.get_accel_range_raw()
+
+        # If XL_FS_MODE == 1 and range is 0x01 (16g), the range is actually 2g
+        full_scale = self.get_accel_full_scale()
+        if full_scale == 1 and range == self.FS_XL_16g:
+            range = self.FS_XL_2g
+
+        # Determine G value based on raw range
+        if range == self.FS_XL_2g:
+            return 2
+        elif range == self.FS_XL_4g:
+            return 4
+        elif range == self.FS_XL_8g:
+            return 8
+        return 16
+
     def set_accel_data_rate(self, rate):
         # Ensure provided rate is valid
         if rate < self.ODR_DISABLE or rate > self.ODR_1_6Hz:
@@ -314,8 +337,8 @@ class QwiicLSM6DSO(object):
 
         # Get high performance value, can't have 1.6Hz with HP mode enabled
         high_perf = self.get_accel_high_perf()
-        if high_perf == 1 and range == self.ODR_1_6Hz:
-            range = self.ODR_12_5Hz
+        if high_perf == 1 and rate == self.ODR_1_6Hz:
+            return False
 
         # Get current register value, set new rate, write new register value
         reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
@@ -326,9 +349,60 @@ class QwiicLSM6DSO(object):
         # Done!
         return True
 
+    def get_accel_data_rate_raw(self):
+        # Get current register value and extract range
+        reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
+        return (reg_val & (0xFF ^ self.ODR_MASK)) >> self.ODR_POS
+
+    def get_accel_data_rate_odr(self):
+        # Get current raw rate
+        rate = self.get_accel_data_rate_raw()
+
+        # If HP mode is enabled and rate is 0x0B (1.6Hz), the rate is 12.5Hz
+        high_perf = self.get_accel_high_perf()
+        if high_perf == 1 and rate == self.ODR_1_6Hz:
+            rate = self.ODR_12_5Hz
+
+        # Determine ODR value based on raw rate
+        if rate == self.ODR_DISABLE:
+            return 0
+        elif rate == self.ODR_1_6Hz:
+            return 1.6
+        elif rate == self.ODR_12_5Hz:
+            return 12.5
+        elif rate == self.ODR_26Hz:
+            return 26
+        elif rate == self.ODR_52Hz:
+            return 52
+        elif rate == self.ODR_104Hz:
+            return 104
+        elif rate == self.ODR_208Hz:
+            return 208
+        elif rate == self.ODR_416Hz:
+            return 416
+        elif rate == self.ODR_833Hz:
+            return 833
+        elif rate == self.ODR_1660Hz:
+            return 1660
+        elif rate == self.ODR_3330Hz:
+            return 3330
+        return 6660
+
+    def set_accel_full_scale(self, enable):
+        reg_val = self._i2c.readByte(self.address, self.CTRL8_XL)
+        reg_val &= 0xFD
+        reg_val |= enable << 1
+        self._i2c.writeByte(self.address, self.CTRL8_XL, reg_val)
+
     def get_accel_full_scale(self):
         reg_val = self._i2c.readByte(self.address, self.CTRL8_XL)
         return (reg_val & 0x02) >> 1
+
+    def set_accel_high_perf(self, enable):
+        reg_val = self._i2c.readByte(self.address, self.CTRL6_C)
+        reg_val &= 0xEF
+        reg_val |= enable << 4
+        self._i2c.writeByte(self.address, self.CTRL6_C, reg_val)
 
     def get_accel_high_perf(self):
         reg_val = self._i2c.readByte(self.address, self.CTRL6_C)
@@ -360,6 +434,26 @@ class QwiicLSM6DSO(object):
         # Done!
         return True
 
+    def get_gyro_range_raw(self):
+        # Get current register value and extract range
+        reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
+        return (reg_val & (0xFF ^ self.FS_G_MASK)) >> self.FS_G_POS
+
+    def get_gyro_range_dps(self):
+        # Get current raw range
+        range = self.get_gyro_range_raw()
+
+        # Determine dps value based on raw range
+        if range == self.FS_G_125dps:
+            return 125
+        elif range == self.FS_G_250dps:
+            return 250
+        elif range == self.FS_G_500dps:
+            return 500
+        elif range == self.FS_G_1000dps:
+            return 1000
+        return 2000
+
     def set_gyro_data_rate(self, rate):
         # Ensure provided rate is valid
         if rate < self.ODR_DISABLE or rate > self.ODR_6660Hz:
@@ -373,6 +467,38 @@ class QwiicLSM6DSO(object):
 
         # Done!
         return True
+
+    def get_gyro_data_rate_raw(self):
+        # Get current register value and extract range
+        reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
+        return (reg_val & (0xFF ^ self.ODR_MASK)) >> self.ODR_POS
+
+    def get_gyro_data_rate_odr(self):
+        # Get current raw rate
+        rate = self.get_gyro_data_rate_raw()
+
+        # Determine ODR value based on raw rate
+        if rate == self.ODR_DISABLE:
+            return 0
+        elif rate == self.ODR_12_5Hz:
+            return 12.5
+        elif rate == self.ODR_26Hz:
+            return 26
+        elif rate == self.ODR_52Hz:
+            return 52
+        elif rate == self.ODR_104Hz:
+            return 104
+        elif rate == self.ODR_208Hz:
+            return 208
+        elif rate == self.ODR_416Hz:
+            return 416
+        elif rate == self.ODR_833Hz:
+            return 833
+        elif rate == self.ODR_1660Hz:
+            return 1660
+        elif rate == self.ODR_3330Hz:
+            return 3330
+        return 6660
 
     def read_raw_accel_x(self):
         return self._i2c.readWord(self.address, self.OUTX_L_A)
