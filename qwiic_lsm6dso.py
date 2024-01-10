@@ -278,6 +278,9 @@ class QwiicLSM6DSO(object):
         reg_val |= enable << 6
         self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
         
+    def get_status_reg(self):
+        return self._i2c.readByte(self.address, self.STATUS_REG)
+        
     def set_accel_range(self, range):
         # Ensure provided range is valid
         if range < self.FS_XL_2g or range > self.FS_XL_8g:
