@@ -261,27 +261,55 @@ class QwiicLSM6DSO(object):
         return True
 
     def reset_member_variables(self):
+        """
+        Resets member variables to their default values
+        """
         # The accelerometer and gyroscope default to their minimum ranges, which
         # result in these conversion factors
         self.accel_raw_to_g = 0.000061
         self.gyro_raw_to_dps = .004375
 
     def software_reset(self):
+        """
+        Resets the device to its default settings
+        """
         self._i2c.writeByte(self.address, self.CTRL3_C, self.SW_RESET_DEVICE)
 
         # Also reset member variables to reflect change of device settings
         self.reset_member_variables()
 
     def set_block_data_update(self, enable):
+        """
+        Sets whether data registers should only update after both the MSB and
+        LSB registers have been read
+
+        :param enable: `True` to enable, `False` to disable
+        :type enable: bool
+        """
         reg_val = self._i2c.readByte(self.address, self.CTRL3_C)
         reg_val &= 0xBF
         reg_val |= enable << 6
         self._i2c.writeByte(self.address, self.CTRL3_C, reg_val)
         
     def get_status_reg(self):
+        """
+        Returns the status register value. Bit 0 is accelerometer data ready,
+        bit 1 is gyroscope data ready, and bit 2 is temperature data ready
+
+        :return: The status register value
+        :rtype: int
+        """
         return self._i2c.readByte(self.address, self.STATUS_REG)
         
     def set_accel_range(self, range):
+        """
+        Sets the accelerometer full scale range. Can be 2g, 4g, 8g, or 16g
+
+        :param range: The full scale range to set
+        :type range: int
+        :return: `True` if successful, otherwise `False`
+        :rtype: bool
+        """
         # Ensure provided range is valid
         if range < self.FS_XL_2g or range > self.FS_XL_8g:
             return False
@@ -311,11 +339,23 @@ class QwiicLSM6DSO(object):
         return True
 
     def get_accel_range_raw(self):
+        """
+        Returns the accelerometer full scale range, raw register value
+
+        :return: The range register's raw value
+        :rtype: int
+        """
         # Get current register value and extract range
         reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
         return (reg_val & (0xFF ^ self.FS_XL_MASK)) >> self.FS_XL_POS
 
     def get_accel_range_g(self):
+        """
+        Returns the accelerometer full scale range in G
+
+        :return: The range in G
+        :rtype: float
+        """
         # Get current raw range
         range = self.get_accel_range_raw()
 
@@ -334,6 +374,15 @@ class QwiicLSM6DSO(object):
         return 16
 
     def set_accel_data_rate(self, rate):
+        """
+        Sets the accelerometer output data rate. Can be 1.6Hz, 12.5Hz, 26Hz,
+        52Hz, 104Hz, 208Hz, 416Hz, 833Hz, 1660Hz, 3330Hz, 6660Hz, or DISABLE
+
+        :param rate: The output data rate to set
+        :type rate: int
+        :return: `True` if successful, otherwise `False`
+        :rtype: bool
+        """
         # Ensure provided rate is valid
         if rate < self.ODR_DISABLE or rate > self.ODR_1_6Hz:
             return False
@@ -353,11 +402,23 @@ class QwiicLSM6DSO(object):
         return True
 
     def get_accel_data_rate_raw(self):
+        """
+        Returns the accelerometer output data rate, raw register value
+
+        :return: The accelerometer output data rate register's raw value
+        :rtype: int
+        """
         # Get current register value and extract range
         reg_val = self._i2c.readByte(self.address, self.CTRL1_XL)
         return (reg_val & (0xFF ^ self.ODR_MASK)) >> self.ODR_POS
 
     def get_accel_data_rate_odr(self):
+        """
+        Returns the accelerometer output data rate in Hz
+
+        :return: The output data rate in Hz
+        :rtype: float
+        """
         # Get current raw rate
         rate = self.get_accel_data_rate_raw()
 
@@ -392,26 +453,59 @@ class QwiicLSM6DSO(object):
         return 6660
 
     def set_accel_full_scale(self, enable):
+        """
+        Sets the accelerometer full scale mode
+
+        :param enable: `True` to enable, `False` to disable
+        :type enable: bool
+        """
         reg_val = self._i2c.readByte(self.address, self.CTRL8_XL)
         reg_val &= 0xFD
         reg_val |= enable << 1
         self._i2c.writeByte(self.address, self.CTRL8_XL, reg_val)
 
     def get_accel_full_scale(self):
+        """
+        Returns the accelerometer full scale mode
+
+        :return: The accelerometer full scale mode
+        :rtype: int
+        """
         reg_val = self._i2c.readByte(self.address, self.CTRL8_XL)
         return (reg_val & 0x02) >> 1
 
     def set_accel_high_perf(self, enable):
+        """
+        Sets the accelerometer high performance mode
+
+        :param enable: `True` to enable, `False` to disable
+        :type enable: bool
+        """
         reg_val = self._i2c.readByte(self.address, self.CTRL6_C)
         reg_val &= 0xEF
         reg_val |= enable << 4
         self._i2c.writeByte(self.address, self.CTRL6_C, reg_val)
 
     def get_accel_high_perf(self):
+        """
+        Returns the accelerometer high performance mode
+
+        :return: The accelerometer high performance mode
+        :rtype: int
+        """
         reg_val = self._i2c.readByte(self.address, self.CTRL6_C)
         return (reg_val & 0x10) >> 4
 
     def set_gyro_range(self, range):
+        """
+        Sets the gyroscope full scale range. Can be 125dps, 250dps, 500dps,
+        1000dps, or 2000dps
+
+        :param range: The full scale range to set
+        :type range: int
+        :return: `True` if successful, otherwise `False`
+        :rtype: bool
+        """
         # Ensure provided range is valid
         if range < self.FS_G_250dps or range > self.FS_G_2000dps:
             return False
@@ -438,11 +532,23 @@ class QwiicLSM6DSO(object):
         return True
 
     def get_gyro_range_raw(self):
+        """
+        Returns the gyroscope full scale range, raw register value
+
+        :return: The range register's raw value
+        :rtype: int
+        """
         # Get current register value and extract range
         reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
         return (reg_val & (0xFF ^ self.FS_G_MASK)) >> self.FS_G_POS
 
     def get_gyro_range_dps(self):
+        """
+        Returns the gyroscope full scale range in DPS
+
+        :return: The range in DPS
+        :rtype: int
+        """
         # Get current raw range
         range = self.get_gyro_range_raw()
 
@@ -458,6 +564,15 @@ class QwiicLSM6DSO(object):
         return 2000
 
     def set_gyro_data_rate(self, rate):
+        """
+        Sets the gyroscope output data rate. Can be 12.5Hz, 26Hz, 52Hz, 104Hz,
+        208Hz, 416Hz, 833Hz, 1660Hz, 3330Hz, or 6660Hz
+
+        :param rate: The output data rate to set
+        :type rate: float
+        :return: `True` if successful, otherwise `False`
+        :rtype: bool
+        """
         # Ensure provided rate is valid
         if rate < self.ODR_DISABLE or rate > self.ODR_6660Hz:
             return False
@@ -472,11 +587,23 @@ class QwiicLSM6DSO(object):
         return True
 
     def get_gyro_data_rate_raw(self):
+        """
+        Returns the gyroscope output data rate, raw register value
+
+        :return: The gyroscope output data rate register's raw value
+        :rtype: int
+        """
         # Get current register value and extract range
         reg_val = self._i2c.readByte(self.address, self.CTRL2_G)
         return (reg_val & (0xFF ^ self.ODR_MASK)) >> self.ODR_POS
 
     def get_gyro_data_rate_odr(self):
+        """
+        Returns the gyroscope output data rate in Hz
+
+        :return: The output data rate in Hz
+        :rtype: float
+        """
         # Get current raw rate
         rate = self.get_gyro_data_rate_raw()
 
@@ -504,27 +631,75 @@ class QwiicLSM6DSO(object):
         return 6660
 
     def read_raw_accel_x(self):
+        """
+        Reads the raw accelerometer X axis value
+
+        :return: The raw accelerometer X axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTX_L_A)
 
     def read_float_accel_x(self):
+        """
+        Reads the accelerometer X axis value in G
+
+        :return: The accelerometer X axis value in G
+        :rtype: float
+        """
         return self.calc_accel(self.read_raw_accel_x())
 
     def read_raw_accel_y(self):
+        """
+        Reads the raw accelerometer Y axis value
+
+        :return: The raw accelerometer Y axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTY_L_A)
 
     def read_float_accel_y(self):
+        """
+        Reads the accelerometer Y axis value in G
+
+        :return: The accelerometer Y axis value in G
+        :rtype: float
+        """
         return self.calc_accel(self.read_raw_accel_y())
 
     def read_raw_accel_z(self):
+        """
+        Reads the raw accelerometer Z axis value
+
+        :return: The raw accelerometer Z axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTZ_L_A)
 
     def read_float_accel_z(self):
+        """
+        Reads the accelerometer Z axis value in G
+
+        :return: The accelerometer Z axis value in G
+        :rtype: float
+        """
         return self.calc_accel(self.read_raw_accel_z())
 
     def read_raw_accel_all(self):
-        return self._i2c.readBlock(self.address, self.OUTX_L_G, 6)
+        """
+        Reads the raw accelerometer X, Y, and Z axis values
+
+        :return: The raw accelerometer X, Y, and Z axis values
+        :rtype: list
+        """
+        return self._i2c.readBlock(self.address, self.OUTX_L_A, 6)
 
     def read_float_accel_all(self):
+        """
+        Reads the accelerometer X, Y, and Z axis values in G
+
+        :return: The accelerometer X, Y, and Z axis values in G
+        :rtype: tuple
+        """
         raw = self.read_raw_accel_all()
         outputX = self.calc_accel(raw[0] | (raw[1] << 8))
         outputY = self.calc_accel(raw[2] | (raw[3] << 8))
@@ -532,33 +707,89 @@ class QwiicLSM6DSO(object):
         return outputX, outputY, outputZ
 
     def calc_accel(self, input):
+        """
+        Calculates the acceleration in G based on the raw input value
+
+        :param input: The raw input value
+        :type input: int
+        :return: The acceleration in G
+        :rtype: float
+        """
         # Convert input to signed 16-bit
         if input >= 32768:
             input -= 65536
         return input * self.accel_raw_to_g
 
     def read_raw_gyro_x(self):
+        """
+        Reads the raw gyroscope X axis value
+
+        :return: The raw gyroscope X axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTX_L_G)
 
     def read_float_gyro_x(self):
+        """
+        Reads the gyroscope X axis value in degrees per second
+
+        :return: The gyroscope X axis value in degrees per second
+        :rtype: float
+        """
         return self.calc_gyro(self.read_raw_gyro_x())
 
     def read_raw_gyro_y(self):
+        """
+        Reads the raw gyroscope Y axis value
+
+        :return: The raw gyroscope Y axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTY_L_G)
 
     def read_float_gyro_y(self):
+        """
+        Reads the gyroscope Y axis value in degrees per second
+
+        :return: The gyroscope Y axis value in degrees per second
+        :rtype: float
+        """
         return self.calc_gyro(self.read_raw_gyro_y())
 
     def read_raw_gyro_z(self):
+        """
+        Reads the raw gyroscope Z axis value
+
+        :return: The raw gyroscope Z axis value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUTZ_L_G)
 
     def read_float_gyro_z(self):
+        """
+        Reads the gyroscope Z axis value in degrees per second
+
+        :return: The gyroscope Z axis value in degrees per second
+        :rtype: float
+        """
         return self.calc_gyro(self.read_raw_gyro_z())
 
     def read_raw_gyro_all(self):
-        return self._i2c.readBlock(self.address, self.OUTX_L_A, 6)
+        """
+        Reads the raw gyroscope X, Y, and Z axis values
+
+        :return: The raw gyroscope X, Y, and Z axis values
+        :rtype: list
+        """
+        return self._i2c.readBlock(self.address, self.OUTX_L_G, 6)
 
     def read_float_gyro_all(self):
+        """
+        Reads the gyroscope X, Y, and Z axis values in degrees per second
+
+        :return: The gyroscope X, Y, and Z axis values in degrees per second
+        :rtype: tuple
+        """
         raw = self.read_raw_gyro_all()
         outputX = self.calc_gyro(raw[0] | (raw[1] << 8))
         outputY = self.calc_gyro(raw[2] | (raw[3] << 8))
@@ -566,15 +797,38 @@ class QwiicLSM6DSO(object):
         return outputX, outputY, outputZ
 
     def calc_gyro(self, input):
+        """
+        Calculates the angular velocity in degrees per second based on the raw
+        input value
+
+        :param input: The raw input value
+        :type input: int
+        :return: The angular velocity in degrees per second
+        :rtype: float
+        """
         # Convert input to signed 16-bit
         if input >= 32768:
             input -= 65536
         return input * self.gyro_raw_to_dps
 
     def read_raw_accel_gyro_all(self):
+        """
+        Reads the raw accelerometer and gyroscope X, Y, and Z axis values
+
+        :return: The raw accelerometer and gyroscope X, Y, and Z axis values
+        :rtype: list
+        """
         return self._i2c.readBlock(self.address, self.OUTX_L_G, 12)
 
     def read_float_accel_gyro_all(self):
+        """
+        Reads the accelerometer and gyroscope X, Y, and Z axis values in G and
+        degrees per second
+
+        :return: The accelerometer and gyroscope X, Y, and Z axis values in G
+            and degrees per second
+        :rtype: tuple
+        """
         raw = self.read_raw_accel_gyro_all()
         gyrX = self.calc_gyro(raw[0] | (raw[1] << 8))
         gyrY = self.calc_gyro(raw[2] | (raw[3] << 8))
@@ -585,9 +839,21 @@ class QwiicLSM6DSO(object):
         return accX, accY, accZ, gyrX, gyrY, gyrZ
 
     def read_raw_temp(self):
+        """
+        Reads the raw temperature value
+
+        :return: The raw temperature value
+        :rtype: int
+        """
         return self._i2c.readWord(self.address, self.OUT_TEMP_L)
 
     def read_temp_c(self):
+        """
+        Reads the temperature value in degrees Celsius
+
+        :return: The temperature value in degrees Celsius
+        :rtype: float
+        """
         temp = self.read_raw_temp()
         msb_temp = (temp & 0xFF00) >> 8
         temp_float = float(msb_temp)
@@ -598,4 +864,10 @@ class QwiicLSM6DSO(object):
         return temp_float
 
     def read_temp_f(self):
+        """
+        Reads the temperature value in degrees Fahrenheit
+
+        :return: The temperature value in degrees Fahrenheit
+        :rtype: float
+        """
         return (self.read_temp_c() * 9) / 5 + 32
