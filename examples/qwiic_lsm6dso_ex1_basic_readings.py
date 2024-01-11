@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #-------------------------------------------------------------------------------
-# qwiic_template_ex1_title.py TODO: replace template and title
+# SparkFun_Qwiic_6DoF_LSM6DSO_Arduino_Library.py
 #
-# TODO: Add description for this example
+# Demonstrates how to get basic measurements from the LSM6DSO 6DoF IMU
 #-------------------------------------------------------------------------------
-# Written by SparkFun Electronics, TODO: month and year
+# Written by SparkFun Electronics, December 2023
 #
 # This python library supports the SparkFun Electroncis Qwiic ecosystem
 #
@@ -33,26 +33,58 @@
 # SOFTWARE.
 #===============================================================================
 
-import qwiic_template # TODO Import correct package
+import qwiic_lsm6dso
 import sys
+import time
 
 def runExample():
-	# TODO Replace template and title
-	print("\nQwiic Template Example 1 - Title\n")
+	print("\nQwiic LSM6DSO Example 1 - Basic Readings\n")
 
 	# Create instance of device
-	myDevice = qwiic_template.QwiicTemplate() # TODO update as needed
+	my_imu = qwiic_lsm6dso.QwiicLSM6DSO()
 
 	# Check if it's connected
-	if myDevice.is_connected() == False:
+	if my_imu.is_connected() == False:
 		print("The device isn't connected to the system. Please check your connection", \
 			file=sys.stderr)
 		return
 
 	# Initialize the device
-	myDevice.begin()
+	my_imu.begin()
 
-	# TODO Add basic example code
+	# Loop forever while printing data
+	while True:
+		# There are a few ways to read sensor data, some are faster than others.
+		# Uncomment the section you want to use below.
+
+		# You can read each axis individually
+		# accX = my_imu.read_float_accel_x()
+		# accY = my_imu.read_float_accel_y()
+		# accZ = my_imu.read_float_accel_z()
+		# gyrX = my_imu.read_float_gyro_x()
+		# gyrY = my_imu.read_float_gyro_y()
+		# gyrZ = my_imu.read_float_gyro_z()
+
+		# Or you can read all 3 axes of each sensor in one call for faster reads
+		# accX, accY, accZ = my_imu.read_float_accel_all()
+		# gyrX, gyrY, gyrZ = my_imu.read_float_gyro_all()
+
+		# Or you can read all 6 axes in a single call for the fastest read speed
+		accX, accY, accZ, gyrX, gyrY, gyrZ = my_imu.read_float_accel_gyro_all()
+		
+		# Now print the results!
+		print("Accelerometer: X:%.2f, Y:%.2f, Z:%.2f g" % (accX, accY, accZ))
+		print("Gyroscope:     X:%.2f, Y:%.2f, Z:%.2f dps" % (gyrX, gyrY, gyrZ))
+
+		# You can also read the temperature of the IMU
+		temperature = my_imu.read_temp_c()
+		print("Temperature:   %.2f C" % temperature)
+
+		# Add some space between readings
+		print()
+
+		# Wait a second and repeat
+		time.sleep(1)
 
 if __name__ == '__main__':
 	try:
