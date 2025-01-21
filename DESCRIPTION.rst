@@ -1,4 +1,4 @@
-Qwiic <Example Package Title>
+Qwiic LSM6DSO
 =============================================
 
-This is a short description of this package.
+This package provides python support for the SparkFun qwiic 6 Degrees of Freedom Breakout - LSM6DSO.
