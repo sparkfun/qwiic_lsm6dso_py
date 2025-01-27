@@ -1,9 +1,7 @@
 {
     "urls": [
-      ["qwiic_lsm6dso.py", "github:sparkfun/Qwiic_LSM6DSO_Py/qwiic_lsm6dso.py"]
-    ],
-    "deps": [
-      ["github:sparkfun/Qwiic_I2C_Py", "master"]
+      ["qwiic_lsm6dso_py_examples/qwiic_lsm6dso_ex1_basic_readings.py", "github:sparkfun/qwiic_lsm6dso_py/examples/qwiic_lsm6dso_ex1_basic_readings.py"],
+      ["qwiic_lsm6dso_py_examples/qwiic_lsm6dso_ex2_settings.py", "github:sparkfun/qwiic_lsm6dso_py/examples/qwiic_lsm6dso_ex2_settings.py"]
     ],
     "version": "0.0.1"
 }
